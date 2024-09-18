@@ -1,19 +1,21 @@
 #include <iostream>
-#include <unordered_map>
-#include <set>
+#include <unordered_set>
+#include <vector>
 
 using namespace std;
 
 struct Team {
-    int team_number;
-    int solved;
-    int penalty;
+    int solved = 0;
+    int penalty = 0;
 
-    Team(int tn = 0, int s = 0, int p = 0) : team_number(tn), solved(s), penalty(p) {}
+    bool operator>=(const Team& other) const {
+        if (solved != other.solved) return solved > other.solved;  
+        return penalty <= other.penalty;  
+    }
 
-    bool operator<(const Team& other) const {
-        if (solved != other.solved) return solved >= other.solved; // More solved problems is better
-        return penalty <= other.penalty; // Lower penalty is better
+    void update(int pen) {
+        solved++;
+        penalty += pen;
     }
 };
 
@@ -21,32 +23,29 @@ int main() {
     int num_teams, num_events;
     cin >> num_teams >> num_events;
 
-    unordered_map<int, Team> teams;
-    set<Team> leaderboard;
-
-    Team team1(1, 0, 0);
-    teams[1] = team1;
-    leaderboard.insert(team1);
+    vector<Team> teams(num_teams);
+    unordered_set<int> better;
 
     while (num_events--) {
         int num, pen;
         cin >> num >> pen;
+        num--;
 
-        if (teams.find(num) != teams.end()) {
-            leaderboard.erase(teams[num]);
+        teams[num].update(pen);
+
+        if (num == 0) {
+            unordered_set<int> discard;
+            for (int t : better) {
+                if (teams[0] >= teams[t]) discard.insert(t);
+            }
+            for (int t : discard) better.erase(t);
         }
 
-        teams[num].team_number = num;
-        teams[num].solved++;
-        teams[num].penalty += pen;
+        if (num != 0 && !(teams[0] >= teams[num])) {
+            better.insert(num);
+        }
 
-        // Reinsert team into leaderboard
-        leaderboard.insert(teams[num]);
-
-        // Find position of team 1
-        auto it = leaderboard.find(teams[1]);
-        int rank = distance(leaderboard.begin(), it) + 1;
-        cout << rank << endl;
+        cout << better.size() + 1 << endl;
     }
 
     return 0;
