@@ -20,6 +20,7 @@ public class Deck implements Iterable<Card> {
             }
         }
     }
+
     public Deck() {
         initializeAllCards();
         shuffle();
@@ -31,12 +32,11 @@ public class Deck implements Iterable<Card> {
         }
     }
 
-
     public List<Card> cards() {
         return new ArrayList<>(aCards);
     }
 
-    public boolean isEmpty(){
+    public boolean isEmpty() {
         return aCards.isEmpty();
     }
 
@@ -65,6 +65,7 @@ public class Deck implements Iterable<Card> {
 
     private class DeckIterator implements Iterator<Card> {
         private int aCurrentIndex;
+
         @Override
         public boolean hasNext() {
             return aCurrentIndex < aCards.size();
