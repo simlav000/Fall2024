@@ -36,17 +36,26 @@ public class Deck implements Iterable<Card> {
         return new ArrayList<>(aCards);
     }
 
+    public int size() {
+        return aCards.size();
+    }
+
     public boolean isEmpty() {
         return aCards.isEmpty();
     }
 
     /**
-     * @return
+     * Draws the top card from the deck,
+     * removing it from the deck in the process.
+     * 
+     * @return Card drawn from the deck
      * @pre Deck is not empty
      */
     public Card draw() {
         assert !isEmpty();
-        return aCards.get(0);
+        Card c = aCards.get(0);
+        aCards.remove(c);
+        return c;
     }
 
     public void shuffle() {
