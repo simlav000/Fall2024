@@ -1,9 +1,8 @@
-import java.util.Objects;
+import java.util.Optional;
 
 public class Card {
-    private Suit aSuit;
-    private Rank aRank;
-    private boolean aIsJoker; // Not sure how to implement. Rank and Suit are ill-defined.
+    private Optional<Suit> aSuit;
+    private Optional<Rank> aRank;
 
     /**
      *
@@ -12,14 +11,11 @@ public class Card {
      * @pre pRank != null
      */
     public Card(Rank pRank, Suit pSuit) {
-        // Objects.requireNonNull(pRank);
-        // Objects.requireNonNull(pSuit);
-        // This method is nice but returns a NullPointerException when it fails so...
         assert pRank != null;
         assert pSuit != null;
 
-        aSuit = pSuit;
-        aRank = pRank;
+        aSuit = Optional.of(pSuit);
+        aRank = Optional.of(pRank);
     }
 
     public Card(Card pCard) {
@@ -28,29 +24,31 @@ public class Card {
     }
 
     public Rank rank() {
-        return aRank;
+        return aRank.get();
     }
 
     public Suit suit() {
-        return aSuit;
+        return aSuit.get();
     }
 
     public Suit.Color color() {
-        if (this.isBlack()) return Suit.Color.BLACK;
-        else return Suit.Color.RED;
+        if (this.isBlack())
+            return Suit.Color.BLACK;
+        else
+            return Suit.Color.RED;
     }
 
     public boolean isRed() {
-        return aSuit.isRed();
+        return aSuit.get().isRed();
     }
 
     public boolean isBlack() {
-        return aSuit.isBlack();
+        return aSuit.get().isBlack();
     }
 
     public Card next() {
-        Rank rank = aRank.next();
-        Suit suit = this.aSuit;
+        Rank rank = aRank.get().next();
+        Suit suit = this.aSuit.get();
         if (rank == Rank.ACE) {
             suit = suit.next();
         }
@@ -59,7 +57,6 @@ public class Card {
 
     @Override
     public String toString() {
-        return aRank.pretty() + " of " + aSuit.pretty();
+        return aRank.get().pretty() + " of " + aSuit.get().pretty();
     }
 }
-
