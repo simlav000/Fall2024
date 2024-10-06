@@ -1,8 +1,10 @@
 import java.util.Optional;
 
 public class Card {
-    private Optional<Suit> aSuit;
-    private Optional<Rank> aRank;
+    private Card JOKER_RED = new Card();
+    private Card JOKER_BLACK = new Card();
+    private CardAttribute aSuit;
+    private CardAttribute aRank;
 
     /**
      *
@@ -14,8 +16,8 @@ public class Card {
         assert pRank != null;
         assert pSuit != null;
 
-        aSuit = Optional.of(pSuit);
-        aRank = Optional.of(pRank);
+        aRank = pRank;
+        aSuit = pSuit;
     }
 
     public Card(Card pCard) {
@@ -23,12 +25,17 @@ public class Card {
         aSuit = pCard.aSuit;
     }
 
+    private Card() {
+        aRank = CardAttribute.NONE;
+        aSuit = CardAttribute.NONE;
+    }
+
     public Rank rank() {
-        return aRank.get();
+        return (Rank) aRank;
     }
 
     public Suit suit() {
-        return aSuit.get();
+        return (Suit) aSuit;
     }
 
     public Suit.Color color() {
@@ -39,16 +46,28 @@ public class Card {
     }
 
     public boolean isRed() {
-        return aSuit.get().isRed();
+        return suit().isRed();
     }
 
     public boolean isBlack() {
-        return aSuit.get().isBlack();
+        return suit().isBlack();
+    }
+
+    public boolean isRedJoker() {
+        return this == JOKER_RED;
+    }
+
+    public boolean isBlackJoker() {
+        return this == JOKER_BLACK;
+    }
+
+    public boolean isJoker() {
+        return isRedJoker() || isBlackJoker();
     }
 
     public Card next() {
-        Rank rank = aRank.get().next();
-        Suit suit = this.aSuit.get();
+        Rank rank = this.rank().next();
+        Suit suit = this.suit();
         if (rank == Rank.ACE) {
             suit = suit.next();
         }
@@ -57,6 +76,11 @@ public class Card {
 
     @Override
     public String toString() {
-        return aRank.get().pretty() + " of " + aSuit.get().pretty();
+        if (isBlackJoker())
+            return "Black Joker";
+        if (isRedJoker())
+            return "Red Joker";
+
+        return aRank.pretty() + " of " + aSuit.pretty();
     }
 }

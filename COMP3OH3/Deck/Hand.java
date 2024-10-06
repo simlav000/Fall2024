@@ -131,8 +131,8 @@ public class Hand implements Iterable<Card>, Comparable<Hand> {
     }
 
     /**
-     * Creates a comparator for which hand contains the largest number of
-     * cards having a given rank.
+     * Static factory method returning a comparator for which
+     * hand contains the largest number of cards having a given rank.
      *
      * @param pRank The rank in question
      * @return A new comparator instance that can compare by number of cards
