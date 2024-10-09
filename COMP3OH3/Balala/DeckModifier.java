@@ -5,6 +5,14 @@ public class DeckModifier implements Predicate<Card> {
         ALL_CARDS, NO_ACES, RED_ONLY;
     }
 
+    // Singleton instance for no modification
+    public static final DeckModifier NULL = new DeckModifier(Modifier.ALL_CARDS) {
+        @Override
+        public boolean test(Card pCard) {
+            return true; // Always returns true, no filtering
+        }
+    };
+
     public final Modifier aModifier;
 
     public DeckModifier(Modifier pModifier) {
@@ -19,4 +27,3 @@ public class DeckModifier implements Predicate<Card> {
 
     }
 }
-
