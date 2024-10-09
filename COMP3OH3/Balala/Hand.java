@@ -9,10 +9,6 @@ public class Hand implements Iterable<Card>, Comparable<Hand> {
     private int aCapacity;
     private List<Card> aCards = new ArrayList<>();
 
-    enum HandComparator {
-        ASCENDING, DESCENDING, POKER;
-    };
-
     public Hand(int pCapacity) {
         assert pCapacity > 0;
         aCapacity = pCapacity;
@@ -96,6 +92,16 @@ public class Hand implements Iterable<Card>, Comparable<Hand> {
      **/
     public boolean isFull() {
         return aCards.size() == aCapacity;
+    }
+
+    public void sortByRank() {
+        CardComparator c = new CardComparator(CardComparator.Order.RANK);
+        Collections.sort(aCards, c);
+    }
+
+    public void sortBySuit() {
+        CardComparator c = new CardComparator(CardComparator.Order.SUIT);
+        Collections.sort(aCards, c);
     }
 
     @Override
