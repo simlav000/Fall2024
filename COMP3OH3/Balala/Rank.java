@@ -1,6 +1,6 @@
 public enum Rank implements CardAttribute {
-    ACE, TWO, THREE, FOUR, FIVE, SIX, SEVEN,
-    EIGHT, NINE, TEN, JAMES, QUEEN, KING;
+    TWO, THREE, FOUR, FIVE, SIX, SEVEN,
+    EIGHT, NINE, TEN, JAMES, QUEEN, KING, ACE;
 
     public Rank next() {
         return Rank.values()[(ordinal() + 1) % values().length];
