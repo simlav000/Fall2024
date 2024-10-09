@@ -71,7 +71,7 @@ public class Card {
     public Card next() {
         Rank rank = this.rank().next();
         Suit suit = this.suit();
-        if (rank == Rank.ACE) {
+        if (rank == Rank.TWO) {
             suit = suit.next();
         }
         return new Card(rank, suit);
