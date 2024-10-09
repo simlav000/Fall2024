@@ -1,5 +1,5 @@
 public enum Suit implements CardAttribute {
-    CLUBS, SPADES, HEARTS, DIAMONDS;
+    SPADES, HEARTS, CLUBS, DIAMONDS;
 
     public Suit next() {
         return Suit.values()[(ordinal() + 1) % values().length];
