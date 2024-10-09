@@ -10,6 +10,11 @@ public class Deck implements Iterable<Card> {
     // to this ArrayList and nothing else. It does not mean that aCards cannot
     // be modified in some way, such as drawing cards.
 
+    public Deck() {
+        initializeAllCards();
+        shuffle();
+    }
+
     public Deck(Predicate<Card> pModifier) {
         initializeAllCards();
         aCards.removeIf(pModifier.negate());
@@ -22,11 +27,6 @@ public class Deck implements Iterable<Card> {
                 aCards.add(new Card(rank, suit));
             }
         }
-    }
-
-    public Deck() {
-        initializeAllCards();
-        this.shuffle();
     }
 
     public Deck(Deck pDeck) {

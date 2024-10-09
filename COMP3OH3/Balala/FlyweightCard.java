@@ -9,6 +9,12 @@ import java.util.Optional;
 public class FlyweightCard {
     private final Optional<Rank> aRank;
     private final Optional<Suit> aSuit;
+
+    /**
+     * Can be used to check if a certain card is equal to any specific
+     * card in a default deck
+     * TODO: Check if Card and FlyweightCard with same rank and suit are equal
+     **/
     private static final FlyweightCard[][] CARDS = // Stores unique instances
             new FlyweightCard[Suit.values().length][Rank.values().length];
     /**
