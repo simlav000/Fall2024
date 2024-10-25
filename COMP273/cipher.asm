@@ -1,3 +1,6 @@
+# Author: Simon Lavoie (simon.lavoie@mail.mcgill.ca)
+# Student Id: 261 051 325
+
         .data
 menu:   .asciiz "Commands (encrypt, decrypt, quit): "
 emsg:   .asciiz "Enter text to encrypt (upper case letters only and maximum of 500 characters): "
@@ -45,9 +48,8 @@ encrypt:
         # The subsequent taking input text and input key is general
         # to encrypt or decrypt so we jump to a subroutine which does 
         # this for both cases. We store in $t2 the label encrypt_end
-        # so that we know whether or not to encrypt or decrypt the 
-        # message in loopstring, and where to jump to once the process 
-        # is finished.
+        # so that we know whether to encrypt or decrypt the message,
+        # And what to print after taking input text and key.
 
         la $t2, encrypt_end
         j get_input
@@ -58,9 +60,9 @@ decrypt:
         la $a0, dmsg
         syscall
 
-        # Same as in encrypt, we store in $t2 the address of decrypt_end
-        # to know what to do in loopstring, and where to jump to when 
-        # finished.
+        # Same as in encrypt, we store in $t2 the address of the
+        # decrypt_end label to know what to do with the key and 
+        # what to print after getting text and key.
 
         la $t2, decrypt_end
         j get_input
@@ -123,14 +125,14 @@ next_char:
         beqz $t3, end       # Loop until null character is found
 
         # Compute address of the current key character
-        add $t7, $t1, $t5
-        lb $t4, 0($t7)      # Load character from key
+        add $t6, $t1, $t5
+        lb $t4, 0($t6)      # Load character from key
 
         # Encrypt/Decrypt logic:
         sub $t3, $t3, 'A'   # Convert input char to 0-25 range (A=0, ..., Z=25)
         sub $t4, $t4, 'A'   # Convert key to 0-25 range as well
 
-        # If key has invalid character (due to newline and null-terminator)
+        # If key has invalid character (newline / null-terminator)
         # We reset it by setting index to zero
         blt $t4, 0, reset_key
         bgt $t4, 25, reset_key
@@ -146,7 +148,7 @@ next_char:
         beq $t2, $t6, negate_key
 
 apply_key:
-        # Add key offset for encryption, subtract for decryption
+        # Add key offset for encryption, key is negative if decrypting
         add $t3, $t3, $t4   # Apply key to input char
 
         # Handle case where result is negative when decrypting
