@@ -171,8 +171,8 @@ next_char:
 
         # If input character is out of range 0-25, it was space or punctuation.
         # print it and move on to the next character.
-        blt $t3, 0, continue
-        bgt $t3, 25, continue
+        blt $t3, 0, justprint
+        bgt $t3, 25, justprint
 
         # If $t2 stores the decrypt_end address, we know to decrypt so jump
         # to the code that negates the key before we actually apply it
@@ -204,6 +204,10 @@ print_result:
         j next_char
 
 continue:
+        addi $t0, $t0, 1
+        j next_char
+
+justprint:
         # Used for then spaces or punctuation appear. Print the 
         # character and increment the character as well as key index.
         # Check if we need to loop back to index zero of the key.
@@ -241,6 +245,12 @@ countchar:
         # $t1 contains key (not used so can be overwritten)
         # $t2 contains label of encrypt/decrypt/count, can't be overwritten
         # $t3 contains current character in int representation (0-25 range)
+        # $t4 - $t6 will be used as temp registers to move data around
+        # $t7 contains most frequent character thus far
+
+        # Don't count characters outside (0-25) range
+        blt $t3, 0, continue 
+        bgt $t3, 25, continue 
 
         # Left-shift twice to multiply by 4 to get address of index $t3
         sll $t3, $t3, 2
@@ -281,22 +291,52 @@ printhighest:
 
         lw $t4, 0($t5)
 
-        # Finish if newline is reached.
-        beq $t4, 10, printcount
+        # If $t3 indexes letter at array[26], out of bounds
+        bgt $t3, 100, printcount
         bgt $t4, $t0, newmax
 
+        # Otherwise
+        addi $t3, $t3, 4
+        j printhighest
+
 newmax:
-        # Swap $t0 with the new highest count
+        # Swap $t0 with the new highest count, $t7 with character index
         move $t0, $t4
+        move $t7, $t3
 
         # Increment index
-        addi $t3, $t3, 1
+        addi $t3, $t3, 4
         j printhighest
 
 printcount:
+        # Convert $t7 from index in array to character
+        srl $t7, $t7, 2        # Right-shift 2 bits (divide by 4)
+        addi $t7, $t7, 'A'     # Convert back to ASCII
+
         li $v0, 11
-        move $a0, $t0
+        move $a0, $t7
         syscall
+
+        la $a0, 10
+        syscall
+
+        jal reset_counts
+
+        j main
+
+reset_counts:
+        li $t0, 0           # Initialize index to 0
+        la $t1, letter_counts  # Load base address of letter_counts
+
+reset_loop:
+        bge $t0, 26, reset_end  # Loop through 26 characters (A-Z)
+        sw $zero, 0($t1)      # Store 0 in the current index
+        addi $t1, $t1, 4      # Move to the next element (4 bytes for each int)
+        addi $t0, $t0, 1      # Increment index
+        j reset_loop
+
+reset_end:
+        jr $ra
 
 quit:
         li $v0, 10
