@@ -2,12 +2,16 @@
 # Student Id: 261 051 325
 
         .data
-menu:   .asciiz "Commands (encrypt, decrypt, quit): "
+menu:   .asciiz "Commands (encrypt, decrypt, CommonChar, quit): "
 emsg:   .asciiz "Enter text to encrypt (upper case letters only and maximum of 500 characters): "
 dmsg:   .asciiz "Enter text to decrypt (upper case letters only and maximum of 500 characters): "
+cmsg:   .asciiz "Enter text (upper case letters only): "
 keymsg: .asciiz "Enter key (upper case letters only and maximum of 50 characters): "
 ncrypt: .asciiz "Encrypted text: "
 dcrypt: .asciiz "Decrypted text: "
+
+# For counting the most common character
+letter_counts: .space 104       # 26 letters * 4 bytes = 104 bytes
 
 input:  .space 500       # Reserve 500 bytes for input string
 key:    .space 50        # Reserve 50 bytes for input key
@@ -31,11 +35,13 @@ main:
         li $t1 'e'
         li $t2 'd'
         li $t3 'q'
+        li $t4 'c'
 
         # quit if $t0 == q
         beq $t0, $t3, quit
         beq $t0, $t1, encrypt
         beq $t0, $t2, decrypt
+        beq $t0, $t4, commonchar
 
         j main
 
@@ -66,6 +72,26 @@ decrypt:
 
         la $t2, decrypt_end
         j get_input
+
+commonchar:
+        # Print "Enter text: "
+        li $v0, 4
+        la $a0, cmsg
+        syscall
+
+        # This method does not require a key so we just take input here
+        li $v0, 8
+        la $a0, input
+        li $a1, 500
+        syscall
+
+        move $t0, $a0       # Store address of input text in $t0
+
+        # Store address of commonchar label to know not to encrypt/decrypt in 
+        # loopstring. This allows us to branch to countchar early while
+        # reusing the loopstring code.
+        la $t2, commonchar
+        j loopstring
 
 get_input:
 	# Take user input
@@ -124,12 +150,18 @@ next_char:
         lb $t3, 0($t0)      # Load character from input text
         beqz $t3, end       # Loop until null character is found
 
+
+        sub $t3, $t3, 'A'   # Convert input char to 0-25 range (A=0, ..., Z=25)
+
+        # If $t2 stores commonchar address, skip the encryption/decryption
+        # process and jump to counting the current character.
+        la $t6, commonchar
+        beq $t2, $t6, countchar
+
         # Compute address of the current key character
         add $t6, $t1, $t5
         lb $t4, 0($t6)      # Load character from key
 
-        # Encrypt/Decrypt logic:
-        sub $t3, $t3, 'A'   # Convert input char to 0-25 range (A=0, ..., Z=25)
         sub $t4, $t4, 'A'   # Convert key to 0-25 range as well
 
         # If key has invalid character (newline / null-terminator)
@@ -204,14 +236,67 @@ fix_negative:
         addi $t3, $t3, 26
         j print_result
 
+countchar:
+        # $t0 contains entire input
+        # $t1 contains key (not used so can be overwritten)
+        # $t2 contains label of encrypt/decrypt/count, can't be overwritten
+        # $t3 contains current character in int representation (0-25 range)
+
+        # Left-shift twice to multiply by 4 to get address of index $t3
+        sll $t3, $t3, 2
+
+        # Load address of count array
+        la $t1, letter_counts
+        add $t5, $t1, $t3    # Get address of letter_counts[i]
+
+        lw $t4, 0($t5)       # Load the current value at letter_counts[$t3] into $t4
+        addi $t4, $t4, 1     # Increment the value by 1
+        sw $t4, 0($t5)       # Store the updated value back at letter_counts[$t3]
+
+        # Move to next character in the input text
+        addi $t0, $t0, 1
+
+        j next_char
+
 
 end:
+        # If we are doung commonchar operation, jump to printing highest count
+        # After having loaded index i = 0 to begin looping over counts to find
+        # the highest
+        li $t0, 0            # To store current max
+        li $t3, 0            # To store index in array
+        la $t6, commonchar
+        beq $t2, $t6, printhighest
+
         # Print newline character after encrypted/decrypted text
         li $v0, 11
         la $a0, 10
         syscall
 
         j main
+
+printhighest:
+        la $t1, letter_counts
+        add $t5, $t1, $t3
+
+        lw $t4, 0($t5)
+
+        # Finish if newline is reached.
+        beq $t4, 10, printcount
+        bgt $t4, $t0, newmax
+
+newmax:
+        # Swap $t0 with the new highest count
+        move $t0, $t4
+
+        # Increment index
+        addi $t3, $t3, 1
+        j printhighest
+
+printcount:
+        li $v0, 11
+        move $a0, $t0
+        syscall
 
 quit:
         li $v0, 10
