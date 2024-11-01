@@ -31,13 +31,17 @@ main:
         # Move character to $t0
         move $t0, $v0
 	
+        # Print newline
+        li $v0, 11
+        la $a0, 10
+        syscall
+
         # Process input
         li $t1 'e'
         li $t2 'd'
         li $t3 'q'
         li $t4 'c'
 
-        # quit if $t0 == q
         beq $t0, $t3, quit
         beq $t0, $t1, encrypt
         beq $t0, $t2, decrypt
@@ -51,14 +55,23 @@ encrypt:
         la $a0, emsg
         syscall
 
-        # The subsequent taking input text and input key is general
-        # to encrypt or decrypt so we jump to a subroutine which does 
-        # this for both cases. We store in $t2 the label encrypt_end
-        # so that we know whether to encrypt or decrypt the message,
-        # And what to print after taking input text and key.
+        # We save permanently in $s0 the address of the encrypt label
+        # so that we know whether to encrypt, decrypt or count
+        # the message. $s0 will basically be an address to the
+        # encrypt/decrypt/countchar label used for branching.
+        la $s0, encrypt
 
-        la $t2, encrypt_end
-        j get_input
+        # The subsequent taking input text and input key is general
+        # to encrypt or decrypt so we jump to a subroutine which does
+        # this for both cases. 
+        jal get_input
+
+        # Print "Encrypted text: "
+        li $v0, 4
+        la $a0, ncrypt
+        syscall
+
+        j loopstring
 
 decrypt:
         # Print "Enter text to decrypt"
@@ -66,12 +79,18 @@ decrypt:
         la $a0, dmsg
         syscall
 
-        # Same as in encrypt, we store in $t2 the address of the
-        # decrypt_end label to know what to do with the key and 
-        # what to print after getting text and key.
+        # Same as in encrypt, we save in $s0 the address of the
+        # decrypt label to know to negate the key before applying it.
+        la $s0, decrypt
 
-        la $t2, decrypt_end
-        j get_input
+        jal get_input
+
+        # Print "Decrypted text: "
+        li $v0 4
+        la $a0 dcrypt
+        syscall
+
+        j loopstring
 
 commonchar:
         # Print "Enter text: "
@@ -87,10 +106,9 @@ commonchar:
 
         move $t0, $a0       # Store address of input text in $t0
 
-        # Store address of commonchar label to know not to encrypt/decrypt in 
-        # loopstring. This allows us to branch to countchar early while
-        # reusing the loopstring code.
-        la $t2, commonchar
+        # Store address of commonchar label to know not to encrypt/decrypt.
+        la $s0, commonchar
+
         j loopstring
 
 get_input:
@@ -115,31 +133,13 @@ get_input:
 
         move $t1, $a0       # Store address of key in $t1
 
-        # Jump to encrypt_end or decrypt_end
-        jr $t2 
-
-encrypt_end:
-        # Print "Encrypted text: "
-        li $v0, 4
-        la $a0, ncrypt
-        syscall
-
-        j loopstring
-
-
-decrypt_end:
-        # Print "Decrypted text: "
-        li $v0 4
-        la $a0 dcrypt
-        syscall
-
-        j loopstring
+        jr $ra
 
 loopstring:
         # At this point:
-        # $t0 : Text to encrypt/decrypt
-        # $t1 : Key
-        # $t2 : Label to jump back to
+        # $s0 : encrypt/decrypt/countchar label used as a three-state boolean
+        # $t0 : Text to encrypt/decrypt/count
+        # $t1 : Key (If encrypt/decrypt)
         # $t3 will be used to store the characters of the input as we iterate
         # $t4 will be used to hold the current character of the key
         # $t5 will be used to hold the current index within the key
@@ -153,10 +153,10 @@ next_char:
 
         sub $t3, $t3, 'A'   # Convert input char to 0-25 range (A=0, ..., Z=25)
 
-        # If $t2 stores commonchar address, skip the encryption/decryption
+        # If $s0 stores commonchar address, skip the encryption/decryption
         # process and jump to counting the current character.
         la $t6, commonchar
-        beq $t2, $t6, countchar
+        beq $s0, $t6, countchar
 
         # Compute address of the current key character
         add $t6, $t1, $t5
@@ -166,18 +166,20 @@ next_char:
 
         # If key has invalid character (newline / null-terminator)
         # We reset it by setting index to zero
-        blt $t4, 0, reset_key
-        bgt $t4, 25, reset_key
+        move $a0, $t4
+        la $a1, reset_key
+        jal check_range
 
         # If input character is out of range 0-25, it was space or punctuation.
         # print it and move on to the next character.
-        blt $t3, 0, justprint
-        bgt $t3, 25, justprint
+        move $a0, $t3
+        la $a1, justprint
+        jal check_range
 
-        # If $t2 stores the decrypt_end address, we know to decrypt so jump
+        # If $s0 stores the decrypt address, we know to decrypt so jump
         # to the code that negates the key before we actually apply it
-        la $t6, decrypt_end
-        beq $t2, $t6, negate_key
+        la $t6, decrypt
+        beq $s0, $t6, negate_key
 
 apply_key:
         # Add key offset for encryption, key is negative if decrypting
@@ -191,8 +193,8 @@ print_result:
         add $t3, $t3, 'A'   # Convert back to ASCII
 
         # Print character
-        li   $v0, 11        # System call for printing a character
-        move $a0, $t3       # Move the character to $a0
+        li   $v0, 11
+        move $a0, $t3
         syscall
 
         # Move to next character in the input text
@@ -208,9 +210,8 @@ continue:
         j next_char
 
 justprint:
-        # Used for then spaces or punctuation appear. Print the 
+        # Used for when spaces or punctuation appear. Print the 
         # character and increment the character as well as key index.
-        # Check if we need to loop back to index zero of the key.
 
         addi $t3, $t3, 'A'   # Convert back to ASCII
 
@@ -225,32 +226,34 @@ justprint:
         j next_char
 
 reset_key:
-        # Set index back to zero
+        # Set key index back to zero
         li $t5, 0
         j next_char
 
 negate_key:
-        # If we are decrypting, simply multiply the key's int value by -1
+        # If we are decrypting, simply negate the key
         # to subtract the offset instead of adding it
         sub $t4, $0, $t4
         j apply_key
 
 fix_negative:
-        # In the case where subtracting the key value leads to a negative result
+        # In the case where subtracting the key value
+        # leads to a negative result, loop back mod 26
         addi $t3, $t3, 26
         j print_result
 
 countchar:
         # $t0 contains entire input
         # $t1 contains key (not used so can be overwritten)
-        # $t2 contains label of encrypt/decrypt/count, can't be overwritten
+        # $s0 contains label of encrypt/decrypt/count, can't be overwritten
         # $t3 contains current character in int representation (0-25 range)
         # $t4 - $t6 will be used as temp registers to move data around
         # $t7 contains most frequent character thus far
 
-        # Don't count characters outside (0-25) range
-        blt $t3, 0, continue 
-        bgt $t3, 25, continue 
+        # No need to count characters outside (0-25) range
+        la $a1, continue
+        move $a0, $t3
+        jal check_range
 
         # Left-shift twice to multiply by 4 to get address of index $t3
         sll $t3, $t3, 2
@@ -269,14 +272,27 @@ countchar:
         j next_char
 
 
+check_range:
+        # Don't count characters outside (0-25) range. Either print them
+        # (in decrypt/encrypt) case or skip them.
+        # $a0: Character to test
+        # $a1: Address to return to (Either justprint/continue)
+        blt $a0, 0, out_of_range
+        bgt $a0, 25, out_of_range
+
+        jr $ra
+
+out_of_range:
+        jr $a1
+
 end:
-        # If we are doung commonchar operation, jump to printing highest count
-        # After having loaded index i = 0 to begin looping over counts to find
-        # the highest
-        li $t0, 0            # To store current max
-        li $t3, 0            # To store index in array
+        # If we are doing commonchar operation, jump to findhighest
+        # After having loaded index i = 0 to begin looping.
+        li $t0, 0             # To store current max
+        li $t3, 0             # To store index in array
+        la $t1, letter_counts # Array of character counts ([0, ..., 0])
         la $t6, commonchar
-        beq $t2, $t6, printhighest
+        beq $s0, $t6, findhighest
 
         # Print newline character after encrypted/decrypted text
         li $v0, 11
@@ -285,8 +301,7 @@ end:
 
         j main
 
-printhighest:
-        la $t1, letter_counts
+findhighest:
         add $t5, $t1, $t3
 
         lw $t4, 0($t5)
@@ -297,7 +312,7 @@ printhighest:
 
         # Otherwise
         addi $t3, $t3, 4
-        j printhighest
+        j findhighest
 
 newmax:
         # Swap $t0 with the new highest count, $t7 with character index
@@ -306,7 +321,7 @@ newmax:
 
         # Increment index
         addi $t3, $t3, 4
-        j printhighest
+        j findhighest
 
 printcount:
         # Convert $t7 from index in array to character
@@ -325,12 +340,13 @@ printcount:
         j main
 
 reset_counts:
-        li $t0, 0           # Initialize index to 0
-        la $t1, letter_counts  # Load base address of letter_counts
+        # Reset letter counts for new input.
+        li $t0, 0             # Initialize index to 0
+        la $t1, letter_counts # Load base address of letter_counts
 
 reset_loop:
-        bge $t0, 26, reset_end  # Loop through 26 characters (A-Z)
-        sw $zero, 0($t1)      # Store 0 in the current index
+        bge  $t0, 26, reset_end  # Loop through 26 characters (A-Z)
+        sw   $0, 0($t1)      # Store 0 in the current index
         addi $t1, $t1, 4      # Move to the next element (4 bytes for each int)
         addi $t0, $t0, 1      # Increment index
         j reset_loop
