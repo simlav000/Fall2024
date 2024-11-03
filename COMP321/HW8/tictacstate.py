@@ -1,4 +1,3 @@
-import numpy as np
 import sys
 
 input = sys.stdin.readline
@@ -28,27 +27,27 @@ input = sys.stdin.readline
 
 def who_wins(game_binary):
     # Extract the most significant bit
-    x_turn = (game_binary & 0b1000000000000000000) >> 18
+    x_turn = (game_binary & 0b1_000_000_000_000_000_000) >> 18
     # print(f"x_turn: {x_turn}")
 
     # Extract the next 9 bits
-    is_x = (game_binary & 0b0111111110000000000) >> 9
+    is_x = (game_binary & 0b0_111_111_111_000_000_000) >> 9
     # Print as a 9-bit binary
     # print(f"is_x: {format(is_x, '09b')}")
 
-    is_played = game_binary & 0b000000000111111111
+    is_played = game_binary & 0b0_000_000_000_111_111_111
     # print(f"is_played: {format(is_played, '09b')}")
 
-    top_row = 0b000000111
-    mid_row = 0b000111000
-    btm_row = 0b111000000
+    top_row = 0b000_000_111
+    mid_row = 0b000_111_000
+    btm_row = 0b111_000_000
 
-    lft_col = 0b001001001
-    mid_col = 0b010010010
-    rgt_col = 0b100100100
+    lft_col = 0b001_001_001
+    mid_col = 0b010_010_010
+    rgt_col = 0b100_100_100
 
-    dwn_diag = 0b100010001
-    up_diag = 0b001010100
+    dn_diag = 0b100_010_001
+    up_diag = 0b001_010_100
 
     ecks = is_x & is_played
     owhe = ~is_x & is_played
@@ -60,7 +59,7 @@ def who_wins(game_binary):
         ecks & lft_col == lft_col or
         ecks & mid_col == mid_col or
         ecks & rgt_col == rgt_col or
-        ecks & dwn_diag == dwn_diag or
+        ecks & dn_diag == dn_diag or
             ecks & up_diag == up_diag):
 
         print("X wins")
@@ -72,7 +71,7 @@ def who_wins(game_binary):
         owhe & lft_col == lft_col or
         owhe & mid_col == mid_col or
         owhe & rgt_col == rgt_col or
-        owhe & dwn_diag == dwn_diag or
+        owhe & dn_diag == dn_diag or
             owhe & up_diag == up_diag):
 
         print("O wins")
@@ -80,7 +79,10 @@ def who_wins(game_binary):
     # Make it so that a game that hasnt already ended but isn't fully
     # played is considered "In progress".
     else:
-        print("Cat's")
+        if is_played != 0b111_111_111:
+            print("In progress")
+        else:
+            print("Cat's")
 
 
 n = int(input())
@@ -88,5 +90,4 @@ n = int(input())
 for _ in range(n):
     game_octal = input()
     game_decimal = int(game_octal, 8)
-    print(bin(game_decimal))
     who_wins(game_decimal)
