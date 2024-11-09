@@ -37,7 +37,7 @@ main:
     #     |     /-----------\
     #     |     |   text    | -> Where instructions are stored (.text)
     #     |     |-----------|
-    #     |     |    data   | -> Statically allocated variables (.data)
+    #     |     |   data    | -> Statically allocated variables (.data)
     #     v     |-----------|
     #           |   heap    | -> Dynamically declared variables (malloc(), new)
     #           |-----------|
