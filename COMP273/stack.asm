@@ -188,9 +188,9 @@ print_int:
 print_string:
     # Print the contents of $a0, assuming $a0 is a string.
     move $t0, $a0     # Take the argument $a0 and store it in $t0
-	li $v0, 4
-	move $a0, $t0     # Use $a0 as argument to the printing syscall
-	syscall
+    li $v0, 4
+    move $a0, $t0     # Use $a0 as argument to the printing syscall
+    syscall
 
     # jr (jump register): Jump to address stored in register
     # $ra (return address): Links to the line that issued the 
