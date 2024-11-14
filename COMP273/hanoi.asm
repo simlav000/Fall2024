@@ -18,7 +18,6 @@ AlgorithmType: .word 0
 main:
     # read the integer n from the standard input
     jal readInt
-
     # now $v0 contains the number of disk n
 
     # check for which algorithm is set to use: Recursive or non-recursive.
@@ -69,6 +68,7 @@ hanoi_rec:
 
     # Here we actually move disk from source to target
     jal print_move
+    addi $s0, $s0, 1
 
     lw $ra, 0($sp)
     lw $a0, 4($sp)
@@ -85,35 +85,43 @@ hanoi_rec:
 delegate:
     subi $a0, $a0, 1
 
-    # Temp to store target
-    move $t0, $a2
-
-    # target becomes auxiliary
-    move $a2, $a3
-
-    # auxiliary becomes target
-    move $a3, $t0
+    move $t0, $a2    # Store target in temp register
+    move $a2, $a3    # Move target to aux
+    move $a3, $t0    # Set new target
 
     # MOVE(n-1, source, aux, target)
-    jal TOH_Recursive
+    jal hanoi_rec
 
-    # Actually move disk
+    # Resore function state from above recursion
+    #lw $ra, 0($sp)
+    lw $a0, 4($sp)
+    lw $a1, 8($sp)
+    lw $a2, 12($sp)
+    lw $a3, 16($sp)
+    #addi $sp, $sp, 20
+
+    # Actually move disk, increment step
     jal print_move
+    addi $s0, $s0, 1
 
-    # Temp to store target
-    move $t0, $a3
+    # Prepare for second recursive call
+    subi $a0, $a0, 1
+    move $t0, $a1
+    move $a1, $a3
+    move $a3, $t0
 
-    # third argument becomes source
-    move $a3, $a1
-
-    # first argument becomes aux
-    move $a1, $a2
-
-    # second argument becomes target
-    move $a2, $t0
 
     # MOVE(n-1, aux, target, source)
-    jal TOH_Recursive
+    jal hanoi_rec
+
+    lw $ra, 0($sp)
+    lw $a0, 4($sp)
+    lw $a1, 8($sp)
+    lw $a2, 12($sp)
+    lw $a3, 16($sp)
+    addi $sp, $sp, 20
+
+    jr $ra
 
 
 
@@ -125,8 +133,48 @@ syscall
 
 
 TOH_Nonrecursive:
-# TODO: Use a non-recursive algorithm to print the solution steps. Make sure you follow the output format.
-# Set the first breakpoint to measure cache performance and instruction count for the non-recursive method at the first instruction of this label
+    # Input:
+    #    $a0 = n
+    #    $a1 = source
+    #    $a2 = target
+    #    $a3 = auxiliary
+
+    # Determine move pattern based on if n is even or odd
+    andi $t0, $a0, 1
+    bne $t0, $0, init_loop 
+
+    # n is even, swap target and aux
+    move $t1, $a2
+    move $a2, $a3
+    move $a3, $t1
+
+init_loop:
+    # Loop termination: Stop when step counter is 2^n - 1
+    li $s1, 1
+    sll $s1, $s1, $s0    # $s1 = 2^n
+    subi $s1, $s1, 1     # $s1 = 2^n - 1
+
+move_loop:
+    bgt $s0, $s1, end_loop
+
+    # Check to see if move is even or odd
+    andi $t2, $s0, 1
+    beq $t2, $0, legal_move
+
+    # Move the smallest disk in cyclic manner
+    move $t3, $a1
+    move $a1, $a2,
+    move $a3, $t3
+
+    # Disk number 1
+    li $a0, 1
+
+    jal print_move
+    addi $s0, $s0, 1
+
+    j move_loop
+
+legal_move:
 
 
 
