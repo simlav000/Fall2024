@@ -5,11 +5,12 @@
     .data
 Step:          .asciiz "Step "
 Colon:         .asciiz ": "
-Move:         .asciiz "move disk "
+Move:          .asciiz "move disk "
 From:          .asciiz " from "
 To:            .asciiz " to "
 Newline:       .asciiz "\n"
-AlgorithmType: .word 0
+
+AlgorithmType: .word 1
 		# 0 Recursive
 		# 1 Non-recursive
     .text
@@ -79,9 +80,6 @@ hanoi_rec:
 
     jr $ra
 
-
-
-
 delegate:
     subi $a0, $a0, 1
 
@@ -133,59 +131,68 @@ syscall
 
 
 TOH_Nonrecursive:
+    # Uses the "Binary solution". Can read about it here:
+    # https://en.wikipedia.org/wiki/Tower_of_Hanoi#Iterative_solution
+    # Can watch an amazing explanation here:
+    # https://www.youtube.com/watch?v=2SUvWfNJSsM
     # Input:
     #    $a0 = n
     #    $a1 = source
     #    $a2 = target
     #    $a3 = auxiliary
+    # Calculate totalMoves = 2^n - 1
+    li $s1, 1                # $s1 = 1
+    sllv $s1, $s1, $a0       # $s1 = 2^n
+    sub $s1, $s1, 1          # $s1 = 2^n - 1
 
-    # Determine move pattern based on if n is even or odd
-    andi $t0, $a0, 1
-    bne $t0, $0, init_loop 
+    # Loop through each move
+    li $t1, 1                # $t1 = m (start with move 1)
 
-    # n is even, swap target and aux
-    move $t1, $a2
-    move $a2, $a3
-    move $a3, $t1
+hanoi_loop:
+    # Check if m <= totalMoves
+    bgt $t1, $s1, end_hanoi  # If m > totalMoves, exit loop
 
-init_loop:
-    # Loop termination: Stop when step counter is 2^n - 1
-    li $s1, 1
-    sll $s1, $s1, $s0    # $s1 = 2^n
-    subi $s1, $s1, 1     # $s1 = 2^n - 1
+    move $a0, $t1
+    jal count_trailing_zeros # Get the disk number
+    move $t2, $v0            # $t2 = disk (return value)
 
-move_loop:
-    bgt $s0, $s1, end_loop
+    # Calculate source = (m & (m - 1)) % 3
+    sub $t3, $t1, 1          # $t3 = m - 1
+    and $t4, $t1, $t3        # $t4 = m & (m - 1)
+    div $t4, $t4, 3          # $t4 = (m & (m - 1)) / 3
+    mfhi $t5                 # Get remainder (source peg)
 
-    # Check to see if move is even or odd
-    andi $t2, $s0, 1
-    beq $t2, $0, legal_move
+    # Calculate destination = ((m | (m - 1)) + 1) % 3
+    sub $t3, $t1, 1          # $t3 = m - 1
+    or $t6, $t1, $t3         # $t6 = m | (m - 1)
+    addi $t6, $t6, 1         # $t6 = (m | (m - 1)) + 1
+    div $t6, $t6, 3          # $t6 = ((m | (m - 1)) + 1) / 3
+    mfhi $t7                 # Get remainder (destination peg)
 
-    # Move the smallest disk in cyclic manner
-    move $t3, $a1
-    move $a1, $a2,
-    move $a3, $t3
+    move $a0, $t5
+    jal get_peg
+    move $a1, $v0
 
-    # Disk number 1
-    li $a0, 1
+    move $a0, $t7
+    jal get_peg
+    move $a2, $v0
+
+    move $a0, $t2
 
     jal print_move
+
+
+    addi $t1, $t1, 1
     addi $s0, $s0, 1
 
-    j move_loop
+    j hanoi_loop
 
-legal_move:
-
-
-
+end_hanoi:
+    li $v0, 10	# exit the program
+    syscall
 
 # TODO END
 # Set the second breakpoint to measure cache performance and instruction count for the non-recursive method at the following line
-li $v0, 10	# exit the program
-syscall
-
-
-
 
 # TODO: your functions here
 
@@ -243,8 +250,52 @@ print_move:
     addi $sp, $sp, 8
     jr $ra
 
+count_trailing_zeros:
+    li      $v0, 0              # Initialize the count to 0
+    beqz    $a0, done           # If the input is zero, return 0
+loop:
+    andi    $t0, $a0, 1         # Check if the least significant bit is 0 (i.e., is $a0 even?)
+    beqz    $t0, increment      # If it's even, proceed to increment the count
+    j       done                # If it's odd, done
+increment:
+    addi    $v0, $v0, 1         # Increment the trailing zero count
+    srl     $a0, $a0, 1         # Right shift $a0 by 1 (dividing by 2)
+    j       loop                # Repeat the loop
 
+done:
+    # Return with the result in $v0
+    addi $v0, $v0, 1
+    jr      $ra
 
+# Helper function to map integers 0, 1, 2 to 'A', 'B', 'C'
+# Input:
+#    $a0: integer (0, 1, or 2)
+# Output:
+#    $v0: character ('A', 'B', or 'C')
+get_peg:
+    # Compare the input with 0, 1, and 2 and set $v0 accordingly
+    li      $t0, 0          # Load 0
+    beq     $a0, $t0, peg_A # If $a0 == 0, jump to peg_A
+
+    li      $t0, 1          # Load 1
+    beq     $a0, $t0, peg_B # If $a0 == 1, jump to peg_B
+
+    li      $t0, 2          # Load 2
+    beq     $a0, $t0, peg_C # If $a0 == 2, jump to peg_C
+
+    jr      $ra             # Return if not 0, 1, or 2 (shouldn't happen)
+
+peg_A:
+    li      $v0, 'A'        # Set $v0 to ASCII value of 'A'
+    jr      $ra             # Return
+
+peg_B:
+    li      $v0, 'B'        # Set $v0 to ASCII value of 'B'
+    jr      $ra             # Return
+
+peg_C:
+    li      $v0, 'C'        # Set $v0 to ASCII value of 'C'
+    jr      $ra             # Return
 # TODO END
 
 
